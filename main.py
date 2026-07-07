@@ -184,9 +184,6 @@ def main() -> None:
     st.caption("How can Athena help you today?")
 
     with st.sidebar:
-        #st.header("Setup")
-        #st.write(f"Chat model: `{CHAT_MODEL}`")
-        #st.write(f"Embedding model: `{EMBEDDING_MODEL}`")
 
         uploaded_files = st.file_uploader(
             "📄 Upload PDFs",
