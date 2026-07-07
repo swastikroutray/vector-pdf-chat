@@ -19,7 +19,7 @@ CHAT_MODEL = os.getenv(
 )
 EMBEDDING_MODEL = os.getenv(
     "GEMINI_EMBEDDING_MODEL",
-    "text-embedding-004"
+    "gemini-embedding-001"
 )
 MAX_CONTEXT_CHUNKS = 5
 MIN_USEFUL_TEXT_CHARS = 20
