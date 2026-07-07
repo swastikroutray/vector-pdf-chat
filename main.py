@@ -93,3 +93,155 @@ def split_text(text: str, chunk_size: int = 1400, overlap: int = 220) -> list[st
             break
         start = max(end - overlap, 0)
     return chunks
+
+def embed_texts(client: genai.Client, texts: list[str]) -> np.ndarray:
+    vectors =[]
+    for text in texts:
+        response = client.models.embed_content(
+            model=EMBEDDING_MODEL,
+            contents=text,
+        )
+        vectors.append(response.embeddings[0].values)
+
+    vectors = np.array(vectors, dtype=np.float32)
+    norms = np.linalg.norm(vectors, axis=1, keepdims= True)
+    return vectors/np.clip(norms, 1e-12, None)
+
+
+def build_index(client: genai, uploaded_files: list[Any]) -> None:
+    chunks = extract_pdf_chunks(uploaded_files)
+    if not chunks:
+        st.session_state.pdf_chunks = []
+        st.session_state.pdf_embeddings = None
+        return
+    
+    with st.spinner("Reading and indexing your PDFs..."):
+        embeddings = embed_texts(client, [chunk.text for chunk in chunks])
+
+    st.session_state.pdf_chunks = chunks
+    st.session_state.pdf_embeddings = embeddings
+
+def retrieve_context(client: genai.Client, question: str)-> list[tuple[Chunk, float]]:
+    chunks:list[Chunk] = st.session_state.get("pdf_chunks", [])
+    embeddings = st.session_state.get("pdf_embeddings")
+    if not chunks or embeddings is None:
+        return []
+    
+    query_embedding = embed_texts(client,[question])[0]
+    scores = embeddings @ query_embedding
+    top_indices = np.argsort(scores)[::-1][:MAX_CONTEXT_CHUNKS]
+    return [(chunks[index], float(scores[index])) for index in top_indices]
+
+def answer_question(
+    client: genai.Client,
+    question: str,
+    matches: list[tuple[Chunk, float]],
+) -> str:
+
+    context = "\n\n".join(
+        f"[{index}] Source: {chunk.source}, page {chunk.page}\n{chunk.text}"
+        for index, (chunk, _score) in enumerate(matches, start=1)
+    )
+
+    prompt = f"""
+You are a careful PDF question-answering assistant.
+Answer using only the provided PDF context.Use any explicit facts, dates, labels, headings, fields, table values, and document metadata that appear in the context.When answering date or time questions, distinguish between document date, sent date, effective date, due date, purchase date, event date, delivery date, or signature date.If the requested information is not present in the context, clearly say so instead of guessing.Include short citations like [1] or [2] for the facts you use.
+
+PDF Context:
+{context}
+
+Question:
+{question}
+""".strip()
+
+    response = client.models.generate_content(
+        model=CHAT_MODEL,
+        contents=prompt,
+    )
+
+    return response.text
+
+def initialize_state() -> None:
+    st.session_state.setdefault("messages", [])
+    st.session_state.setdefault("pdf_file_hash", None)
+    st.session_state.setdefault("pdf_chunks", [])
+    st.session_state.setdefault("pdf_embeddings", None)
+
+def main() -> None:
+    st.set_page_config(page_title="AI PDF Chatbot", page_icon=":material/description:", layout="wide")
+    initialize_state()
+
+    st.title("AI PDF Chatbot")
+    st.caption("Upload PDFs, ask questions, and get answers grounded in the document text.")
+
+    with st.sidebar:
+        st.header("Setup")
+        st.write(f"Chat model: `{CHAT_MODEL}`")
+        st.write(f"Embedding model: `{EMBEDDING_MODEL}`")
+
+        uploaded_files = st.file_uploader(
+            "Upload PDF files",
+            type=["pdf"],
+            accept_multiple_files=True,
+        )
+
+        if st.button("Clear chat", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+
+    client = get_client()
+    if not client:
+        st.info("Set GEMINI_API_KEY in your `.env` file, then restart the app.")
+        return
+
+    if uploaded_files:
+        current_hash = file_hash(uploaded_files)
+        if current_hash != st.session_state.pdf_file_hash:
+            build_index(client, uploaded_files)
+            st.session_state.pdf_file_hash = current_hash
+            st.session_state.messages = []
+
+        chunk_count = len(st.session_state.pdf_chunks)
+        if chunk_count:
+            st.success(f"Indexed {chunk_count} text chunks from {len(uploaded_files)} PDF file(s).")
+        else:
+            st.warning("No extractable text was found. Scanned PDFs may need OCR first.")
+    else:
+        st.info("Upload at least one PDF to start chatting.")
+        return
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    question = st.chat_input("Ask a question about your PDFs")
+    if not question:
+        return
+
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Searching the PDFs and writing an answer..."):
+            matches = retrieve_context(client, question)
+            if not matches:
+                answer = "I couldn't find any relevant information in the uploaded PDFs."
+            else:
+                answer = answer_question(client, question, matches)
+        st.markdown(answer)
+
+        with st.expander("Retrieved context"):
+            for i, (chunk, score) in enumerate(matches, start=1):
+                st.markdown(f"### Chunk {i}")
+                st.markdown(f"**Source:** {chunk.source}")
+                st.markdown(f"**Page:** {chunk.page}")
+                st.markdown(f"**Similarity:** `{score:.3f}`")
+                st.write(chunk.text)
+                st.divider()
+
+    st.session_state.messages.append({"role": "assistant", "content": answer})
+
+
+if __name__ == "__main__":
+    main()
