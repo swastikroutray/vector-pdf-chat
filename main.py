@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 from google import genai
 from pypdf import PdfReader
 from pypdf.errors import DependencyError, PdfReadError
+def load_css():
+    with open("style.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 load_dotenv()
 
@@ -115,7 +118,7 @@ def build_index(client: genai, uploaded_files: list[Any]) -> None:
         st.session_state.pdf_embeddings = None
         return
     
-    with st.spinner("Reading and indexing your PDFs..."):
+    with st.spinner("Reading your PDFs..."):
         embeddings = embed_texts(client, [chunk.text for chunk in chunks])
 
     st.session_state.pdf_chunks = chunks
@@ -145,7 +148,12 @@ def answer_question(
 
     prompt = f"""
 You are a careful PDF question-answering assistant.
-Answer using only the provided PDF context.Use any explicit facts, dates, labels, headings, fields, table values, and document metadata that appear in the context.When answering date or time questions, distinguish between document date, sent date, effective date, due date, purchase date, event date, delivery date, or signature date.If the requested information is not present in the context, clearly say so instead of guessing.Include short citations like [1] or [2] for the facts you use.
+Answer using only the provided PDF context.Use any explicit facts, dates, labels, headings, fields, table values, and document metadata that appear in the context.When answering date or time questions, distinguish between document date, sent date, effective date, due date, purchase date, event date, delivery date, or signature date.If the requested information is not present in the context, clearly say so instead of guessing. You are Athena.
+Answer ONLY using the provided document context.
+If the answer is not explicitly contained in the context, respond exactly with:
+"I couldn't find information about that in the uploaded document."
+Do not guess.
+Do not use outside knowledge.
 
 PDF Context:
 {context}
@@ -168,19 +176,20 @@ def initialize_state() -> None:
     st.session_state.setdefault("pdf_embeddings", None)
 
 def main() -> None:
-    st.set_page_config(page_title="AI PDF Chatbot", page_icon=":material/description:", layout="wide")
+    st.set_page_config(page_title="Athena", page_icon=":material/description:", layout="wide")
+    load_css()    
     initialize_state()
 
-    st.title("AI PDF Chatbot")
-    st.caption("Upload PDFs, ask questions, and get answers grounded in the document text.")
+    st.title("Athena")
+    st.caption("How can Athena help you today?")
 
     with st.sidebar:
-        st.header("Setup")
-        st.write(f"Chat model: `{CHAT_MODEL}`")
-        st.write(f"Embedding model: `{EMBEDDING_MODEL}`")
+        #st.header("Setup")
+        #st.write(f"Chat model: `{CHAT_MODEL}`")
+        #st.write(f"Embedding model: `{EMBEDDING_MODEL}`")
 
         uploaded_files = st.file_uploader(
-            "Upload PDF files",
+            "📄 Upload PDFs",
             type=["pdf"],
             accept_multiple_files=True,
         )

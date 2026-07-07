@@ -1,0 +1,72 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+html, body, .stApp{
+    font-family:Inter,sans-serif;
+    background:#202123;
+    color:#ECECEC;
+}
+[data-testid="stSidebar"]{
+    background:#171717;
+    border-right:1px solid #2f2f2f;
+}
+h1{
+    font-size:40px;
+    font-weight:700;
+}
+[data-testid="stFileUploader"]{
+    background:#2A2B32;
+    border:1px solid #40414F;
+    border-radius:15px;
+    padding:15px;
+}
+.stButton button{
+    width:100%;
+    border-radius:12px;
+    background:#8a8a8a;
+    color:white;
+    border:none;
+    font-weight:600;
+    transition:.2s;
+}
+.stButton button:hover{
+    background:#707171;
+}
+[data-testid="stChatMessage"]{
+    background:#2A2B32;
+    border-radius:18px;
+    padding:18px;
+    margin:15px 0;
+    border:1px solid #3c3c46;
+}
+[data-testid="stChatInput"]{
+    border-radius:18px;
+}
+.stSuccess{
+    border-radius:12px;
+}
+.streamlit-expanderHeader{
+    font-weight:600;
+}
+[data-testid="stFileUploaderDropzoneInstructions"] {
+    display: none;
+}
+[data-testid="stFileUploaderDropzone"]{
+    border:none !important;
+    background:transparent !important;
+    padding:0 !important;
+    min-height:auto !important;
+}
+[data-testid="stBaseButton-secondary"]{
+    border-radius:10px;
+    color:white !important;
+}
+div[data-testid="stAlert"] {
+    background-color: #b92020 !important; 
+    border: 1px solid #b92020 !important; 
+    color: #FEE2E2 !important;  
+}          
+div[data-testid="stAlert"] svg {
+    color: #EF4444 !important;
+}
+div[data-testid="stAlert"] p {
+    color: white !important;
+}
