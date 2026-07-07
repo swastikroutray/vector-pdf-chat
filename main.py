@@ -32,7 +32,6 @@ class Chunk:
 
 def get_client() -> genai.Client | None:
     api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
-    st.write("API key exists:", api_key is not None)
     if not api_key:
         return None
     return genai.Client(api_key=api_key)
