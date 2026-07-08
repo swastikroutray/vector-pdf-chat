@@ -100,10 +100,17 @@ def split_text(text: str, chunk_size: int = 1400, overlap: int = 220) -> list[st
 def embed_texts(client: genai.Client, texts: list[str]) -> np.ndarray:
     vectors =[]
     for text in texts:
-        response = client.models.embed_content(
-            model=EMBEDDING_MODEL,
-            contents=text,
-        )
+        try:
+            response = client.models.embed_content(
+                model=EMBEDDING_MODEL,
+                contents=text,
+            )
+        except Exception as e:
+            if "quota" in str(e).lower() or "429" in str(e):
+                st.error("Usage limit has been reached. Please try again later.")
+            else:
+                st.error(f"Error: {e}")
+            st.stop()
         vectors.append(response.embeddings[0].values)
 
     vectors = np.array(vectors, dtype=np.float32)
@@ -162,10 +169,17 @@ Question:
 {question}
 """.strip()
 
-    response = client.models.generate_content(
-        model=CHAT_MODEL,
-        contents=prompt,
-    )
+    try:
+        response = client.models.generate_content(
+            model=CHAT_MODEL,
+            contents=prompt,
+        )
+    except Exception as e:
+        if "quota" in str(e).lower() or "429" in str(e):
+            st.error("Usage limit has been reached. Please try again later.")
+        else:
+            st.error(f"Error: {e}")
+        st.stop()
 
     return response.text
 
@@ -203,9 +217,16 @@ def main() -> None:
     if uploaded_files:
         current_hash = file_hash(uploaded_files)
         if current_hash != st.session_state.pdf_file_hash:
-            build_index(client, uploaded_files)
-            st.session_state.pdf_file_hash = current_hash
-            st.session_state.messages = []
+            try:
+                build_index(client, uploaded_files)
+                st.session_state.pdf_file_hash = current_hash
+                st.session_state.messages = []
+            except Exception as e:
+                if "quota" in str(e).lower() or "429" in str(e):
+                    st.error("Usage limit has been reached. Please try again later.")
+                else:
+                    st.error(f"Error: {e}")
+                st.stop()
 
         chunk_count = len(st.session_state.pdf_chunks)
         if chunk_count:
