@@ -106,8 +106,11 @@ def embed_texts(client: genai.Client, texts: list[str]) -> np.ndarray:
                 contents=text,
             )
         except Exception as e:
-            if "quota" in str(e).lower() or "429" in str(e):
-                st.error("Usage limit has been reached. Please try again later.")
+            error = str(e).lower()
+            if "429" in error or "quota" in error:
+                st.error("Usage limit reached. Please try again later.")
+            elif "503" in error or "unavailable" in error:
+                st.error("Athena is currently experiencing high demand. Please try again in a few minutes.")
             else:
                 st.error(f"Error: {e}")
             st.stop()
@@ -175,8 +178,11 @@ Question:
             contents=prompt,
         )
     except Exception as e:
-        if "quota" in str(e).lower() or "429" in str(e):
-            st.error("Usage limit has been reached. Please try again later.")
+        error = str(e).lower()
+        if "429" in error or "quota" in error:
+            st.error("Usage limit reached. Please try again later.")
+        elif "503" in error or "unavailable" in error:
+            st.error("Athena is currently experiencing high demand. Please try again in a few minutes.")
         else:
             st.error(f"Error: {e}")
         st.stop()
@@ -222,8 +228,11 @@ def main() -> None:
                 st.session_state.pdf_file_hash = current_hash
                 st.session_state.messages = []
             except Exception as e:
-                if "quota" in str(e).lower() or "429" in str(e):
-                    st.error("Usage limit has been reached. Please try again later.")
+                error = str(e).lower()
+                if "429" in error or "quota" in error:
+                    st.error("Usage limit reached. Please try again later.")
+                elif "503" in error or "unavailable" in error:
+                    st.error("Athena is currently experiencing high demand. Please try again in a few minutes.")
                 else:
                     st.error(f"Error: {e}")
                 st.stop()
